@@ -14,4 +14,4 @@ jobs:
       - name: Build
         run: swift build
       - name: Run tests
-        run: bash $GITHUB_ACTION_PATH/test_and_report.sh
+        run: bash $GITHUB_WORKSPACE/test_and_report.sh
