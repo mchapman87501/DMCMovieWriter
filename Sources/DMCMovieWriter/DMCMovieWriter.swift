@@ -1,9 +1,10 @@
-// Many many thanks to:
+// Many thanks to:
 // https://ios.programmingpedia.net/en/tutorial/10607/create-a-video-from-images
-import Foundation
+
 import AVFoundation
-import AppKit // For NSImage
-import CoreGraphics // For CGImage
+import AppKit  // For NSImage
+import CoreGraphics  // For CGImage
+import Foundation
 
 private func getAdapter(writerInput: AVAssetWriterInput)
     -> AVAssetWriterInputPixelBufferAdaptor
@@ -72,7 +73,7 @@ public class DMCMovieWriter {
 
     typealias BuffInfoResult = Result<BuffInfo, DMCMovieWriterError>
     private var buffByFrame = [Int: BuffInfoResult]()
-    
+
     /// Create or replace a movie.
     /// - Parameters:
     ///   - url: The location of the movie
@@ -85,7 +86,7 @@ public class DMCMovieWriter {
         try? FileManager.default.removeItem(at: url)
 
         writer = try AVAssetWriter(outputURL: url, fileType: .mov)
-        let compressionSettings = [ AVVideoAverageBitRateKey: Int(30e6)]
+        let compressionSettings = [AVVideoAverageBitRateKey: Int(30e6)]
         let inputParams: [String: Any] = [
             AVVideoCodecKey: AVVideoCodecType.h264,
             AVVideoWidthKey: width,
@@ -98,14 +99,15 @@ public class DMCMovieWriter {
         if writer.canAdd(writerInput) {
             writer.add(writerInput)
         } else {
-            throw DMCMovieWriterError.initError(msg: "Can't add AVAssetWriterInput")
+            throw DMCMovieWriterError.initError(
+                msg: "Can't add AVAssetWriterInput")
         }
         adapter = getAdapter(writerInput: writerInput)
 
         writer.startWriting()
         writer.startSession(atSourceTime: CMTime.zero)
     }
-    
+
     /// Add a frame to the movie
     /// - Parameters:
     ///   - image: the content of the new frame
@@ -119,11 +121,18 @@ public class DMCMovieWriter {
             autoreleasepool {
                 let result: BuffInfoResult
                 if seconds <= 0.0 {
-                    result = .failure(DMCMovieWriterError.addFrameError(msg: "Duration (\(seconds)) must be > 0.0"))
+                    result = .failure(
+                        DMCMovieWriterError.addFrameError(
+                            msg: "Duration (\(seconds)) must be > 0.0"))
                 } else if let pixelBuff = createPixelBuff(from: image) {
-                    result = .success(BuffInfo(buffer: pixelBuff, duration: seconds))
+                    result = .success(
+                        BuffInfo(buffer: pixelBuff, duration: seconds))
                 } else {
-                    result = .failure(DMCMovieWriterError.addFrameError(msg: "Could not create pixel buff for frame \(thisFrame)"))
+                    result = .failure(
+                        DMCMovieWriterError.addFrameError(
+                            msg:
+                                "Could not create pixel buff for frame \(thisFrame)"
+                        ))
                 }
                 self.storeQ.async(group: self.prepareGroup) {
                     self.buffByFrame[thisFrame] = result
@@ -137,7 +146,7 @@ public class DMCMovieWriter {
             try drain(lowWater: 10)
         }
     }
-    
+
     /// Flush out unwritten movie frames.
     /// - Parameter lowWater: Stop flushing when the number of unwritten frames drops to this value (default 0).
     public func drain(lowWater: Int = 0) throws {
@@ -158,27 +167,33 @@ public class DMCMovieWriter {
             }
         }
     }
-    
+
     private func awaitWriterReady() throws {
         var retriesRemaining = 5
         while !writerInput.isReadyForMoreMediaData {
             Thread.sleep(forTimeInterval: 1.0)
             retriesRemaining -= 1
             if retriesRemaining <= 0 {
-                throw DMCMovieWriterError.writeTimeout(msg: "Writer input is still not ready after too many retries.")
+                throw DMCMovieWriterError.writeTimeout(
+                    msg:
+                        "Writer input is still not ready after too many retries."
+                )
             }
         }
     }
-    
+
     private func writeFrameBuffer(_ frameID: Int, buffInfo: BuffInfo) throws {
-        let presTime = CMTimeMakeWithSeconds(currTime, preferredTimescale: 1_000_000)
-        if !self.adapter.append(buffInfo.buffer, withPresentationTime: presTime) {
-            throw DMCMovieWriterError.addFrameError(msg: "Failed to append frame \(frameID)")
+        let presTime = CMTimeMakeWithSeconds(
+            currTime, preferredTimescale: 1_000_000)
+        if !self.adapter.append(buffInfo.buffer, withPresentationTime: presTime)
+        {
+            throw DMCMovieWriterError.addFrameError(
+                msg: "Failed to append frame \(frameID)")
         }
         currTime += buffInfo.duration
 
     }
-    
+
     /// Finish writing the movie.
     public func finish() throws {
         let sema = DispatchSemaphore(value: 0)

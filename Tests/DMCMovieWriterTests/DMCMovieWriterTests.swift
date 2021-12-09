@@ -1,4 +1,5 @@
 import XCTest
+
 @testable import DMCMovieWriter
 
 final class DMCMovieWriterTests: XCTestCase {
@@ -9,47 +10,53 @@ final class DMCMovieWriterTests: XCTestCase {
         let tempFilename = "\(ProcessInfo().globallyUniqueString).mov"
         return tmpDir.appendingPathComponent(tempFilename)
     }
-    
+
     func testCanWriteStuff() throws {
         let width = 640
         let height = 480
         let outpath = tempMovieURL()
-        
+
         let fm = FileManager.default
         XCTAssertFalse(fm.fileExists(atPath: outpath.absoluteURL.path))
 
-        let movieWriter = try! DMCMovieWriter(outpath: outpath, width: width, height: height)
-        
-        let image = NSImage(size: NSSize(width: width, height: height), flipped: false) { rect in
+        let movieWriter = try! DMCMovieWriter(
+            outpath: outpath, width: width, height: height)
+
+        let image = NSImage(
+            size: NSSize(width: width, height: height), flipped: false
+        ) { rect in
             NSColor.white.setFill()
             NSBezierPath.fill(rect)
             return true
         }
-        
+
         try movieWriter.addFrame(image, duration: 3.0)
         try movieWriter.finish()
-        
+
         // Some test, huh.
         XCTAssertTrue(fm.fileExists(atPath: outpath.absoluteURL.path))
         try fm.removeItem(at: outpath)
     }
-    
+
     func testInvalidDuration() throws {
         let width = 640
         let height = 480
         let outpath = tempMovieURL()
-        
+
         let fm = FileManager.default
         XCTAssertFalse(fm.fileExists(atPath: outpath.absoluteURL.path))
 
-        let movieWriter = try! DMCMovieWriter(outpath: outpath, width: width, height: height)
-        
-        let image = NSImage(size: NSSize(width: width, height: height), flipped: false) { rect in
+        let movieWriter = try! DMCMovieWriter(
+            outpath: outpath, width: width, height: height)
+
+        let image = NSImage(
+            size: NSSize(width: width, height: height), flipped: false
+        ) { rect in
             NSColor.white.setFill()
             NSBezierPath.fill(rect)
             return true
         }
-        
+
         for _ in 0..<3 {
             try movieWriter.addFrame(image, duration: -1.0)
         }
@@ -59,5 +66,5 @@ final class DMCMovieWriterTests: XCTestCase {
             try fm.removeItem(at: outpath)
         }
     }
-    
+
 }
