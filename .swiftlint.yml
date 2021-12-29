@@ -178,7 +178,7 @@ only_rules:
   - switch_case_on_newline
   - syntactic_sugar
   - test_case_accessibility
-  - todo
+  # - todo
   - toggle_bool
   - trailing_closure
   # Prefer swift-format behavior:
