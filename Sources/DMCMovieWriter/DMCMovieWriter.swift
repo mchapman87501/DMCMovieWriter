@@ -12,7 +12,7 @@ private func getAdapter(writerInput: AVAssetWriterInput)
     let attrs: [String: Any] = [
         String(kCVPixelBufferPixelFormatTypeKey): kCVPixelFormatType_32ARGB,
         String(kCVPixelBufferCGImageCompatibilityKey): true,
-        String(kCVPixelBufferCGBitmapContextCompatibilityKey): true,
+        String(kCVPixelBufferCGBitmapContextCompatibilityKey): true
     ]
     return AVAssetWriterInputPixelBufferAdaptor(
         assetWriterInput: writerInput, sourcePixelBufferAttributes: attrs)
@@ -21,10 +21,10 @@ private func getAdapter(writerInput: AVAssetWriterInput)
 private func getPixelBuff(pixelWidth w: Int, height h: Int) -> CVPixelBuffer? {
     let attrs = [
         kCVPixelBufferCGBitmapContextCompatibilityKey: true,
-        kCVPixelBufferCGImageCompatibilityKey: true,
+        kCVPixelBufferCGImageCompatibilityKey: true
     ]
 
-    var result: CVPixelBuffer? = nil
+    var result: CVPixelBuffer?
     let status = CVPixelBufferCreate(
         nil, w, h, kCVPixelFormatType_32ARGB, attrs as CFDictionary, &result
     )
@@ -35,7 +35,7 @@ private func getPixelBuff(pixelWidth w: Int, height h: Int) -> CVPixelBuffer? {
 }
 
 private func createPixelBuff(from img: NSImage) -> CVPixelBuffer? {
-    var result: CVPixelBuffer? = nil
+    var result: CVPixelBuffer?
     autoreleasepool {
         let cgImg = img.cgImage(forProposedRect: nil, context: nil, hints: nil)!
         let ciImage = CIImage(cgImage: cgImg)
@@ -91,7 +91,7 @@ public class DMCMovieWriter {
             AVVideoCodecKey: AVVideoCodecType.h264,
             AVVideoWidthKey: width,
             AVVideoHeightKey: height,
-            AVVideoCompressionPropertiesKey: compressionSettings,
+            AVVideoCompressionPropertiesKey: compressionSettings
         ]
 
         writerInput = AVAssetWriterInput(
@@ -162,6 +162,7 @@ public class DMCMovieWriter {
             case .success(let buffInfo):
                 try awaitWriterReady()
                 try writeFrameBuffer(k, buffInfo: buffInfo)
+
             case .failure(let error):
                 throw error
             }
@@ -191,7 +192,6 @@ public class DMCMovieWriter {
                 msg: "Failed to append frame \(frameID)")
         }
         currTime += buffInfo.duration
-
     }
 
     /// Finish writing the movie.

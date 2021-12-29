@@ -7,14 +7,14 @@ let package = Package(
     name: "DMCMovieWriter",
     // https://docs.swift.org/package-manager/PackageDescription/PackageDescription.html
     platforms: [
-        .macOS(.v11),
-        //.linux
+        .macOS(.v11)
+        // .linux
     ],
     products: [
         // Products define the executables and libraries a package produces, and make them visible to other packages.
         .library(
             name: "DMCMovieWriter",
-            targets: ["DMCMovieWriter"]),
+            targets: ["DMCMovieWriter"])
     ],
     dependencies: [
         // Dependencies declare other packages that this package depends on.
@@ -28,6 +28,6 @@ let package = Package(
             dependencies: []),
         .testTarget(
             name: "DMCMovieWriterTests",
-            dependencies: ["DMCMovieWriter"]),
+            dependencies: ["DMCMovieWriter"])
     ]
 )

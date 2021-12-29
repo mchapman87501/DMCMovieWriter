@@ -3,7 +3,7 @@ import XCTest
 @testable import DMCMovieWriter
 
 final class DMCMovieWriterTests: XCTestCase {
-    func tempMovieURL() -> URL {
+    private func tempMovieURL() -> URL {
         // https://nshipster.com/temporary-files/
         let fm = FileManager.default
         let tmpDir = fm.temporaryDirectory
@@ -66,5 +66,4 @@ final class DMCMovieWriterTests: XCTestCase {
             try fm.removeItem(at: outpath)
         }
     }
-
 }
