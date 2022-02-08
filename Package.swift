@@ -28,6 +28,6 @@ let package = Package(
             dependencies: []),
         .testTarget(
             name: "DMCMovieWriterTests",
-            dependencies: ["DMCMovieWriter"])
+            dependencies: ["DMCMovieWriter"]),
     ]
 )

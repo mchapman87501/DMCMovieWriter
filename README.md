@@ -1,4 +1,3 @@
-# MovieWriter
+# DMCMovieWriter
 
-MovieWriter helps create h.264 movies from NSImages.
-
+`DMCMovieWriter` helps create movies from `NSImage`s.

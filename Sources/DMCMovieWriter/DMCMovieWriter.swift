@@ -12,7 +12,7 @@ private func getAdapter(writerInput: AVAssetWriterInput)
     let attrs: [String: Any] = [
         String(kCVPixelBufferPixelFormatTypeKey): kCVPixelFormatType_32ARGB,
         String(kCVPixelBufferCGImageCompatibilityKey): true,
-        String(kCVPixelBufferCGBitmapContextCompatibilityKey): true
+        String(kCVPixelBufferCGBitmapContextCompatibilityKey): true,
     ]
     return AVAssetWriterInputPixelBufferAdaptor(
         assetWriterInput: writerInput, sourcePixelBufferAttributes: attrs)
@@ -21,7 +21,7 @@ private func getAdapter(writerInput: AVAssetWriterInput)
 private func getPixelBuff(pixelWidth w: Int, height h: Int) -> CVPixelBuffer? {
     let attrs = [
         kCVPixelBufferCGBitmapContextCompatibilityKey: true,
-        kCVPixelBufferCGImageCompatibilityKey: true
+        kCVPixelBufferCGImageCompatibilityKey: true,
     ]
 
     var result: CVPixelBuffer?
@@ -45,13 +45,20 @@ private func createPixelBuff(from img: NSImage) -> CVPixelBuffer? {
     return result
 }
 
+/// A type representing some kinds of errors that can arise when creating movies.
 public enum DMCMovieWriterError: Error {
+    /// An error that indicates something went wrong during movie initialization,
+    /// e.g., a failure to remove an existing movie at the given path, or an inability to create an `AVAssetWriter`.
     case initError(msg: String)
+
+    /// An error that indicates a problem adding a frame to a movie.
     case addFrameError(msg: String)
+
+    /// An error that indicates a timeout occurred when trying to flush movie frames.
     case writeTimeout(msg: String)
 }
 
-/// DMCMovieWriter helps create H.264 movies from sequences of NSImages.
+/// DMCMovieWriter creates movies from sequences of `NSImage`s.
 public class DMCMovieWriter {
     struct BuffInfo {
         let buffer: CVPixelBuffer
@@ -72,13 +79,14 @@ public class DMCMovieWriter {
     private let prepareGroup = DispatchGroup()
 
     typealias BuffInfoResult = Result<BuffInfo, DMCMovieWriterError>
+
     private var buffByFrame = [Int: BuffInfoResult]()
 
     /// Create or replace a movie.
     /// - Parameters:
-    ///   - url: The location of the movie
-    ///   - width: width of the movie in ... pixels, I think.
-    ///   - height: height of the movie in pixels
+    ///   - url: the location of the movie
+    ///   - width: the width of the movie in pixels
+    ///   - height: the height of the movie in pixels
     public init(outpath url: URL, width: Int, height: Int) throws {
         outPath = url
 
@@ -91,7 +99,7 @@ public class DMCMovieWriter {
             AVVideoCodecKey: AVVideoCodecType.h264,
             AVVideoWidthKey: width,
             AVVideoHeightKey: height,
-            AVVideoCompressionPropertiesKey: compressionSettings
+            AVVideoCompressionPropertiesKey: compressionSettings,
         ]
 
         writerInput = AVAssetWriterInput(
@@ -108,7 +116,11 @@ public class DMCMovieWriter {
         writer.startSession(atSourceTime: CMTime.zero)
     }
 
-    /// Add a frame to the movie
+    /// Add a frame to the movie.
+    ///
+    /// Frames are written asynchronously.   This method buffers the provided frame, which will be written to the
+    /// movie's `outpath` when possible.
+    ///
     /// - Parameters:
     ///   - image: the content of the new frame
     ///   - seconds: how long to "play" the new frame
@@ -147,8 +159,11 @@ public class DMCMovieWriter {
         }
     }
 
-    /// Flush out unwritten movie frames.
-    /// - Parameter lowWater: Stop flushing when the number of unwritten frames drops to this value (default 0).
+    /// Synchronously flush buffered frames.
+    ///
+    /// You can call this method to reduce the memory consumed by a ``DMCMovieWriter``.
+    ///
+    /// - Parameter lowWater: stop writing when the number of unwritten frames is &le; this value
     public func drain(lowWater: Int = 0) throws {
         prepareGroup.wait()
         let numToWrite = max(0, buffByFrame.count - lowWater)
@@ -194,7 +209,9 @@ public class DMCMovieWriter {
         currTime += buffInfo.duration
     }
 
-    /// Finish writing the movie.
+    /// Flush all buffered frames and finish writing the movie.
+    ///
+    /// Once this method is called, no more frames can be added to the movie.
     public func finish() throws {
         let sema = DispatchSemaphore(value: 0)
         try drain()
