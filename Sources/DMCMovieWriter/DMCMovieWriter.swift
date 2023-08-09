@@ -64,21 +64,25 @@ public class DMCMovieWriter {
         let buffer: CVPixelBuffer
         let duration: Double  // How long to show this buffered image, in seconds.
     }
+    typealias BuffInfoResult = Result<BuffInfo, DMCMovieWriterError>
 
     let outPath: URL
     let writer: AVAssetWriter
     let writerInput: AVAssetWriterInput
     let adapter: AVAssetWriterInputPixelBufferAdaptor
 
+    // ID and start time of the next frame to be generated:
     private var currFrame = 0
     private var currTime = 0.0
 
-    private let prepareQ = DispatchQueue(
-        label: "Prepare pixel buff", qos: .utility, attributes: .concurrent)
-    private let storeQ = DispatchQueue(label: "Store buffer")
-    private let prepareGroup = DispatchGroup()
+    // ID of the next frame to be written:
+    private var currOutFrame = 0
+    private var firstFailure: DMCMovieWriterError?
 
-    typealias BuffInfoResult = Result<BuffInfo, DMCMovieWriterError>
+    private let prepareQ = DispatchQueue(
+        label: "Prepare pixel buffs", qos: .utility, attributes: .concurrent)
+    private let storeQ = DispatchQueue(label: "Store buffers")
+    private let prepareGroup = DispatchGroup()
 
     private var buffByFrame = [Int: BuffInfoResult]()
 
@@ -148,6 +152,7 @@ public class DMCMovieWriter {
                 }
                 self.storeQ.async(group: self.prepareGroup) {
                     self.buffByFrame[thisFrame] = result
+                    self.writePreparedBuffers()
                 }
             }
         }
@@ -155,28 +160,36 @@ public class DMCMovieWriter {
         // Drain the result dictionary once it starts eating too much memory.
         let highWater = 20
         if buffByFrame.count >= highWater {
-            try drain(lowWater: 10)
+            drain()
         }
     }
 
     /// Synchronously flush buffered frames.
-    ///
-    /// You can call this method to reduce the memory consumed by a ``DMCMovieWriter``.
-    ///
-    /// - Parameter lowWater: stop writing when the number of unwritten frames is &le; this value
-    public func drain(lowWater: Int = 0) throws {
+    public func drain() {
         prepareGroup.wait()
-        let numToWrite = max(0, buffByFrame.count - lowWater)
-        if numToWrite <= 0 {
-            return
+    }
+
+    private func writePreparedBuffers() {
+        do {
+            try writePreparedBuffersUnsafe()
+        } catch {
+            if error is DMCMovieWriterError {
+                if self.firstFailure == nil {
+                    self.firstFailure = error as? DMCMovieWriterError
+                }
+            } else {
+                print("Oops, didn't account for that: \(error)")
+            }
         }
-        let keys = buffByFrame.keys.sorted()
-        for k in keys[0..<numToWrite] {
-            let result = self.buffByFrame.removeValue(forKey: k)!
-            switch result {
+    }
+
+    private func writePreparedBuffersUnsafe() throws {
+        while let buffInfoResult = self.buffByFrame.removeValue(forKey: currOutFrame) {
+            switch buffInfoResult {
             case .success(let buffInfo):
                 try awaitWriterReady()
-                try writeFrameBuffer(k, buffInfo: buffInfo)
+                try writeFrameBuffer(currOutFrame, buffInfo: buffInfo)
+                currOutFrame += 1
 
             case .failure(let error):
                 throw error
@@ -214,11 +227,14 @@ public class DMCMovieWriter {
     /// Once this method is called, no more frames can be added to the movie.
     public func finish() throws {
         let sema = DispatchSemaphore(value: 0)
-        try drain()
+        prepareGroup.wait()
         writerInput.markAsFinished()
         writer.finishWriting {
             sema.signal()
         }
         sema.wait()
+        if let err = firstFailure {
+            throw err
+        }
     }
 }
